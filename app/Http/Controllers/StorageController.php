@@ -13,39 +13,55 @@ use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Core\ExponentialBackoff;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Log;
-use Twilio\Rest\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Client;
+use App\Storage;
 
 
 class StorageController extends Controller
 {
 
-        public function __construct()
-        { 
-            $this->path = public_path('audio-contents/');
-            $this->apikey = config('cloudconvert.api_key');
-            $this->bucket_name = env('GOOGLE_CLOUD_STORAGE_BUCKET', 'femmy2');
-        }
+    public function __construct()
+    { 
+        $this->path = public_path('audio-contents/');
+        $this->apikey = config('cloudconvert.api_key');
+        $this->bucket_name = env('GOOGLE_CLOUD_STORAGE_BUCKET', 'femmy2');
+        $this->processed = 'processed';
+        $this->processing = 'processing';
+        $this->not_processed = 'not_processed';
+        $this->failed = 'failed';
 
-        /**
-         * Initializes the SpeechClient
-         * @return object \SpeechClient
-         */
-        public function createInstance()
-        {
-            $project_id = env('PROJECT_ID');
-            $speech = new SpeechClient([
-                'projectId' => $project_id,
-                'languageCode' => 'en-US',
-            ]);
-            
-            
-            return $speech;
-        }
+    }
+
+
+    public function createInstance()
+    {
+        $project_id = env('PROJECT_ID');
+        $speech = new SpeechClient([
+            'projectId' => $project_id,
+            'languageCode' => 'en-US',
+        ]);
+        
+        
+        return $speech;
+    }
 
     function upload_object()
     {
         $storage = new StorageClient();
-        $response = QuestionResponse::where('storage_completed',0)->first();
+        $response = QuestionResponse::where('storage_status',$this->not_processed)->orWhere('storage_status',$this->failed)->first();
+        
+        // check if an object was found
+        if(!$response){
+            return;
+        }
+        
+        $this->updateStorageStatusWhenStoring($response);
+
+        if(!$response){
+            return;
+        }
+
         $audio = $response->response . '.mp3';
         $_filename = $response->recording_sid;
         $cloudconvert = new CloudConvert([
@@ -59,8 +75,8 @@ class StorageController extends Controller
 
             $cloudconvert->file($audio)->to($this->path . $filename);
 
-        } catch (ClientException $e) {
-           
+        } catch (\Throwable $e) {
+           $this->updateStorageStatusIfFailed($response);
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage(),
@@ -70,14 +86,47 @@ class StorageController extends Controller
         $file_path = $this->path.$filename;
         $file = fopen($file_path, 'r');
         $bucket = $storage->bucket($this->bucket_name);
-        $object = $bucket->upload($file, [
-            'name' => $filename
-        ]);
+        
+         // upload audio
+        try {
+            $object = $bucket->upload($file, [
+                'name' => $filename
+            ]);
+        } catch (Exception $e) {
+            $this->updateStorageStatusIfFailed($response);
+        }
         $this->deleteFile($filename);
-        $this->updateQuestion($response, $filename);
+        $this->updateStorageWhenStored($response, $filename);
         $this->deleteRecordingFromTwilio($response->recording_sid);
         
-        error_log('Uploaded');
+        Log::info('Uploaded');
+    }
+
+    public function insertData()
+    {
+       $last_object_id = 1;
+       $client = new \GuzzleHttp\Client([
+       'base_uri' => 'http://localhost:8001',
+        'defaults' => [
+            'exceptions' => false
+        ]
+       ]);
+    
+        $response = $client->request('GET', '/api/responses/'.$last_object_id);
+        $data = (string)$response->getBody();
+        $responses = json_decode($data, true);
+
+        $last_object_id = end($responses)['id'];
+        Log::info($responses);
+        Log::info($last_object_id);
+
+        foreach($responses as $response) {
+        Storage::create([
+            'Recording_Sid' => $response['response'],
+            'Recording_Url' => $response['recording_sid']
+        ]);
+        }
+
     }
 
     public static function getFilename($name)
@@ -98,10 +147,21 @@ class StorageController extends Controller
         return;
     }
 
-    public function updateQuestion($response, $filename)
+    public function updateStorageStatusWhenStoring($response)
+    {
+        $response->storage_status = $this->processing;
+        $response->save();
+    }
+
+    public function updateStorageStatusIfFailed($response)
+    {
+        $response->storage_status = $this->failed;
+        $response->save();
+    }
+    public function updateStorageWhenStored($response, $filename)
     {
         $response->response = $filename;
-        $response->storage_completed = 1;
+        $response->storage_status = $this->processed;
         $response->save();
     }
 
