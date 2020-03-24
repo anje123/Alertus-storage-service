@@ -16,6 +16,7 @@
         "laravel/framework": "5.7.*",
         "laravel/tinker": "^1.0",
         "robbiep/cloudconvert-laravel": "2.*",
+        "superbalist/laravel-google-cloud-storage": "^2.2",
         "twilio/sdk": "^6.0"
     },
     "require-dev": {

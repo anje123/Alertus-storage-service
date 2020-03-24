@@ -6,7 +6,7 @@ use App\Http\Requests;
 use Response;
 use App\Http\Controllers\Controller;
 use Cookie;
-use App\QuestionResponse;
+use App\Store;
 use Google\Cloud\Speech\SpeechClient;
 use RobbieP\CloudConvertLaravel\CloudConvert;
 use Google\Cloud\Storage\StorageClient;
@@ -15,8 +15,7 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Client;
-use App\Storage;
-
+use Storage;
 
 class StorageController extends Controller
 {
@@ -46,10 +45,10 @@ class StorageController extends Controller
         return $speech;
     }
 
-    function upload_object()
+    public  function upload_object()
     {
         $storage = new StorageClient();
-        $response = QuestionResponse::where('storage_status',$this->not_processed)->orWhere('storage_status',$this->failed)->first();
+        $response = Store::where('Storage_status',$this->not_processed)->orWhere('Storage_status',$this->failed)->first();
         
         // check if an object was found
         if(!$response){
@@ -58,12 +57,9 @@ class StorageController extends Controller
         
         $this->updateStorageStatusWhenStoring($response);
 
-        if(!$response){
-            return;
-        }
 
-        $audio = $response->response . '.mp3';
-        $_filename = $response->recording_sid;
+        $audio = $response->Recording_Url . '.mp3';
+        $_filename = $response->Recording_Sid;
         $cloudconvert = new CloudConvert([
 
             'api_key' => $this->apikey
@@ -97,7 +93,7 @@ class StorageController extends Controller
         }
         $this->deleteFile($filename);
         $this->updateStorageWhenStored($response, $filename);
-        $this->deleteRecordingFromTwilio($response->recording_sid);
+      //  $this->deleteRecordingFromTwilio($response->recording_sid);
         
         Log::info('Uploaded');
     }
@@ -121,10 +117,10 @@ class StorageController extends Controller
         Log::info($last_object_id);
 
         foreach($responses as $response) {
-        Storage::create([
-            'Recording_Sid' => $response['response'],
-            'Recording_Url' => $response['recording_sid']
-        ]);
+            Store::create([
+                'Recording_Sid' => $response['recording_sid'],
+                'Recording_Url' => $response['response']
+            ]);
         }
 
     }
@@ -149,19 +145,22 @@ class StorageController extends Controller
 
     public function updateStorageStatusWhenStoring($response)
     {
-        $response->storage_status = $this->processing;
+        $response->Storage_status = $this->processing;
         $response->save();
     }
 
     public function updateStorageStatusIfFailed($response)
     {
-        $response->storage_status = $this->failed;
+        $response->Storage_status = $this->failed;
         $response->save();
     }
     public function updateStorageWhenStored($response, $filename)
     {
-        $response->response = $filename;
-        $response->storage_status = $this->processed;
+        error_log($filename);
+        $disk = Storage::disk('gcs');
+        $url = $disk->url($filename);
+        $response->Recording_Url = $url;
+        $response->Storage_status = $this->processed;
         $response->save();
     }
 
@@ -176,4 +175,11 @@ class StorageController extends Controller
       //  unlink($file_name) or die("Couldn't delete file");
     }
     
+    public function test()
+    {
+        $disk = Storage::disk('gcs');
+        $url = $disk->url('RE297a63cc9986c1335792faae7024b4bd.flac');
+        error_log($url);
+    }
+
 }
