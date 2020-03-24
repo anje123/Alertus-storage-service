@@ -57,42 +57,19 @@ class StorageController extends Controller
         
         $this->updateStorageStatusWhenStoring($response);
 
-
         $audio = $response->Recording_Url . '.mp3';
-        $_filename = $response->Recording_Sid;
-        $cloudconvert = new CloudConvert([
-
-            'api_key' => $this->apikey
-        ]);
-
-        $filename = self::getFilename($_filename);
+        $filename = $response->Recording_Sid .'.mp3';
 
         try {
-
-            $cloudconvert->file($audio)->to($this->path . $filename);
-
-        } catch (\Throwable $e) {
-           $this->updateStorageStatusIfFailed($response);
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ]);
-        }
-
-        $file_path = $this->path.$filename;
-        $file = fopen($file_path, 'r');
-        $bucket = $storage->bucket($this->bucket_name);
-        
-         // upload audio
-        try {
-            $object = $bucket->upload($file, [
-                'name' => $filename
-            ]);
-        } catch (Exception $e) {
+            $contents = file_get_contents($audio);
+            Storage::disk('gcs')->put($filename, $contents);
+            $this->updateStorageWhenStored($response, $filename);
+        } catch (\Throwable $th) {
             $this->updateStorageStatusIfFailed($response);
+            Log::error($th);
         }
-        $this->deleteFile($filename);
-        $this->updateStorageWhenStored($response, $filename);
+
+
       //  $this->deleteRecordingFromTwilio($response->recording_sid);
         
         Log::info('Uploaded');
@@ -125,24 +102,6 @@ class StorageController extends Controller
 
     }
 
-    public static function getFilename($name)
-    {
-        return $name.".flac";
-    } 
-
-    public function deleteFile($filename)
-    {
-        $file = $this->path.$filename;
-
-        $filesystem = new Filesystem;
-
-        if ($filesystem->exists($file)) {
-
-            $filesystem->delete($file);
-        }
-        return;
-    }
-
     public function updateStorageStatusWhenStoring($response)
     {
         $response->Storage_status = $this->processing;
@@ -156,7 +115,6 @@ class StorageController extends Controller
     }
     public function updateStorageWhenStored($response, $filename)
     {
-        error_log($filename);
         $disk = Storage::disk('gcs');
         $url = $disk->url($filename);
         $response->Recording_Url = $url;
@@ -175,11 +133,5 @@ class StorageController extends Controller
       //  unlink($file_name) or die("Couldn't delete file");
     }
     
-    public function test()
-    {
-        $disk = Storage::disk('gcs');
-        $url = $disk->url('RE297a63cc9986c1335792faae7024b4bd.flac');
-        error_log($url);
-    }
 
 }
