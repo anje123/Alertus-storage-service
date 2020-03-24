@@ -122,15 +122,24 @@ class StorageController extends Controller
         $response->save();
     }
 
-    public function deleteRecordingFromTwilio($RecordingSid){
-        // Find your Account Sid and Auth Token at twilio.com/console
-        $sid    = getenv('ACCOUNT_SID');
-        $token  = getenv('TWILIO_TOKEN');
-        $twilio = new Client($sid, $token);
-        $twilio->recordings($RecordingSid)
-               ->delete();
-        // delete local copy
-      //  unlink($file_name) or die("Couldn't delete file");
+    public function deleteRecordingFromTwilio(){
+        $client = new \GuzzleHttp\Client([
+            'base_uri' => 'http://localhost:8001',
+             'defaults' => [
+                 'exceptions' => false
+             ]
+            ]);
+        $responses = Store::where('Storage_status',$this->processed)->where('Twilio_delection_status','false')->take(10)->get();
+        Log::info($responses);
+        $response = $client->request('POST', '/api/delete_recording_from_twilio', ['form_params' => json_decode($responses)]);
+
+        if($response->getStatusCode() == 200){
+            $responses->Twilio_delection_status = 'true';
+            $responses->save();
+        }else{
+            Log::error('Unable to delete');
+            return;
+        }
     }
     
 
