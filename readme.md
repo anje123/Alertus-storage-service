@@ -16,9 +16,9 @@ HOW TO SETUP:
 * Upload an audio:
     * POST /api/store
     field: recording_sid,recording_url
-* To get all google storage url stored:
+* To get all google storage url uploaded:
     * GET /api/store
-* To get one audio:
+* To get one audio uploaded by id:
     * GET /api/store/{id}
 ## HTTP Verbs
 
