@@ -16,3 +16,8 @@ use Illuminate\Http\Request;
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('/store', ['uses' => 'API\StorageController@upload_object']);
+Route::get('/store', ['uses' => 'API\StorageController@getStoredUrl']);
+Route::get('/store/{id}', ['uses' => 'API\StorageController@getStoredUrlById']);
+

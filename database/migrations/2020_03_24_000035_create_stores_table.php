@@ -18,7 +18,6 @@ class CreateStoresTable extends Migration
             $table->string('Recording_Sid');
             $table->string('Recording_Url');
             $table->string('Storage_status')->default('not_processed');
-            $table->string('Twilio_delection_status')->default('false');
             $table->timestamps();
         });
     }
