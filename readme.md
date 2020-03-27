@@ -11,9 +11,10 @@ HOW TO SETUP:
 * clone this repo
 * cp .env.example .env fill the Keys in the .env accordingly with the API keys generated above
 * composer install
+* php artisan migrate, to migrate table
 
 ## RESTful URLs
-* Upload an audio:
+* Upload an audio to google cloud storage bucket:
     * POST /api/store
     field: recording_sid,recording_url
 * To get all google storage url uploaded:
