@@ -10,8 +10,6 @@ use Google\Cloud\Storage\StorageClient;
 use Illuminate\Filesystem\Filesystem;
 use App\Http\Controllers\BaseController as BaseController;
 use Illuminate\Support\Facades\Log;
-use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Client;
 use Storage;
 
 class StorageController extends BaseController
