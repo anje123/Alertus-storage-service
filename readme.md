@@ -21,8 +21,6 @@ HOW TO SETUP:
     * GET /api/store
 * To get one audio uploaded by id:
     * GET /api/store/{id}
-## HTTP Verbs
 
-| HTTP METHOD | POST            | GET       | PUT         | DELETE |
-| ----------- | --------------- | --------- | ----------- | ------ |
-| CRUD OP     | CREATE          | READ      | UPDATE      | DELETE |
+#### Please Dont Forget Check My Pull Request and Issues for my recent contributions to Ushahidi :heart: :pray:
+
