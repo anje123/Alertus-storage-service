@@ -11,6 +11,9 @@ use Illuminate\Filesystem\Filesystem;
 use App\Http\Controllers\BaseController as BaseController;
 use Illuminate\Support\Facades\Log;
 use Storage;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
 
 class StorageController extends BaseController
 {
@@ -19,10 +22,39 @@ class StorageController extends BaseController
     { 
         $this->path = public_path('audio-contents/');
         $this->apikey = config('cloudconvert.api_key');
-        $this->bucket_name = env('GOOGLE_CLOUD_STORAGE_BUCKET', '');
+        $this->bucket_name = env('GOOGLE_CLOUD_STORAGE_BUCKET', 'femmy2');
         $this->processed = 'processed';
         $this->not_processed = 'not_processed';
     }
+
+    public function test()
+    {
+        $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
+        $channel = $connection->channel();
+        $channel->queue_declare('storage_queue', false, true, false, false);
+        $callback = function($msg) {
+            //Convert the data to array
+            $data = json_decode($msg->body, true);
+            Log::info($data);
+            foreach ($data as $sdata) {
+                Store::create([
+                    'Recording_Url' => $sdata['response'],
+                    'Recording_Sid' => $sdata['recording_sid']
+                ]);
+            }
+
+     
+            echo "Finished Processing\n";
+        };
+        $channel->basic_consume('storage_queue', '', false, false, false, false, $callback);
+
+        //Listen to requests
+        while (count($channel->callbacks)) {
+            $channel->wait();
+        }
+
+    }
+
 
     public  function upload_object(Request $request)
     {

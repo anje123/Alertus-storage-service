@@ -26,9 +26,9 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
-      //$schedule->call('App\Http\Controllers\StorageController@upload_object')->everyMinute();
+      $schedule->call('App\Http\Controllers\StorageController@upload_object')->everyMinute();
      // $schedule->call('App\Http\Controllers\StorageController@insertData')->everyMinute();
-     $schedule->call('App\Http\Controllers\StorageController@deleteRecordingFromTwilio')->everyMinute();
+    // $schedule->call('App\Http\Controllers\API\StorageController@test')->everyMinute();
 
 
     }
