@@ -22,5 +22,5 @@ HOW TO SETUP:
 * To get one audio uploaded by id:
     * GET /api/store/{id}
 
-#### Please Dont Forget to Check My Pull Request and Issues for my recent contributions to Ushahidi :heart: :pray:
+#### Please Check My Github Account Pull Requests and Issues for my recent contributions to Ushahidi :heart: :pray:
 
